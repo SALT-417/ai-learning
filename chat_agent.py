@@ -7,9 +7,10 @@ from tool_selector import (
 
 import json
 
+from memory_manager import save_history, load_history
 
 def main():
-    conversation_history = []
+    conversation_history = load_history()
 
     print("AI学習エージェントを開始します。")
     print("終了するには「終了」と入力してください。")
@@ -74,6 +75,8 @@ def main():
                 }
             )
 
+            save_history(conversation_history)
+            
         else:
             answer = tool_data.get(
                 "answer",
@@ -89,6 +92,7 @@ def main():
                 }
             )
 
+            save_history(conversation_history)
 
 if __name__ == "__main__":
     main()
