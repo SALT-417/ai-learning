@@ -324,6 +324,14 @@ def validate_tools(
 
     has_minutes = minutes_match is not None
 
+    # ユーザー入力に分数がない場合、
+    # Qwenが勝手に作った詳細学習記録Toolを除去する
+    if not has_minutes:
+        tools = [
+            tool
+            for tool in tools
+            if tool.get("tool") != "add_detailed_study"
+        ]
     # -------------------------
     # トピック + 分数の詳細記録
     # -------------------------
