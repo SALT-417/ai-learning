@@ -58,6 +58,7 @@ def main():
             context_history
         )
 
+
         if result is None:
             print(
                 "AI：AIとの通信に失敗したため、"
@@ -81,6 +82,7 @@ def main():
             tools,
             context_history
         )
+
 
         conversation_history.append(
             {
