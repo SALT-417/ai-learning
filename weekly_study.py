@@ -16,16 +16,17 @@ def show_daily_study(days, study_minutes):
     return good_days
 
 
+good_days = show_daily_study(days, study_minutes)
+
+total = sum(study_minutes)
+average = total / len(study_minutes)
+
+
 def show_summary(total, average, good_days):
     print("=== 集計 ===")
     print(f"1週間の合計学習時間：{total}分")
     print(f"1日の平均学習時間：{average:.1f}分")
     print(f"60分以上学習した日：{good_days}日")
 
-
-good_days = show_daily_study(days, study_minutes)
-
-total = sum(study_minutes)
-average = total / len(study_minutes)
 
 show_summary(total, average, good_days)
