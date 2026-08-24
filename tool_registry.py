@@ -15,6 +15,11 @@ from detailed_study_tools import (
     get_study_analysis_facts
 )
 
+from study_goal_tools import (
+    set_study_goal,
+    get_goal_progress
+)
+
 TOOL_REGISTRY = {
     "add_study_minutes": {
         "function": add_study_minutes,
@@ -50,5 +55,18 @@ TOOL_REGISTRY = {
     "get_study_analysis_facts": {
         "function": get_study_analysis_facts,
         "arguments": []
+    },
+    "set_study_goal": {
+        "function": set_study_goal,
+        "arguments": [
+            "topic",
+            "target_minutes"
+        ]
+    },
+    "get_goal_progress": {
+        "function": get_goal_progress,
+        "arguments": [
+            "topic"
+        ]
     }
 }

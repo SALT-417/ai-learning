@@ -180,6 +180,29 @@ def select_tool(user_input, conversation_history=None):
                 "追加してはいけません。"
                 "キーと文字列には必ずダブルクォートを使用してください。"
                 "toolsとanswerは必ずJSONオブジェクトの直下に置いてください。"
+
+                "学習目標を設定する場合は、"
+                "set_study_goalを選んでください。"
+
+                "例："
+                "ユーザー：Pythonを120分勉強する目標にしたい"
+                "回答："
+                '{"tools": ['
+                '{"tool": "set_study_goal", '
+                '"topic": "Python", '
+                '"target_minutes": 120}'
+                '], "answer": null}'
+
+                "学習目標までの進捗を確認する場合は、"
+                "get_goal_progressを選んでください。"
+
+                "例："
+                "ユーザー：Pythonの目標まであとどれくらい？"
+                "回答："
+                '{"tools": ['
+                '{"tool": "get_goal_progress", '
+                '"topic": "Python"}'
+                '], "answer": null}'
             )
         }
     ]
@@ -569,7 +592,9 @@ def validate_tools(
         "get_study_topics",
         "add_detailed_study",
         "get_topic_study_totals",
-        "get_study_analysis_facts"
+        "get_study_analysis_facts",
+        "set_study_goal",
+        "get_goal_progress"
     ]
 
     tools = [
@@ -615,7 +640,10 @@ def execute_tools(tools):
                     break
 
                 if (
-                    argument_name == "minutes"
+                    argument_name in [
+                        "minutes",
+                        "target_minutes"
+                    ]
                     and (
                         not isinstance(argument_value, int)
                         or argument_value <= 0

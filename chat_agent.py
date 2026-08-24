@@ -94,10 +94,33 @@ def main():
         if tools:
             tool_results = execute_tools(tools)
 
-            final_answer = generate_final_answer(
-                user_input,
-                tool_results
-            )
+            tool_names = [
+                tool.get("tool")
+                for tool in tools
+            ]
+
+            direct_response_tools = [
+                "set_study_goal",
+                "add_study_minutes",
+                "add_study_topic",
+                "add_detailed_study"
+            ]
+
+            if any(
+                tool_name in direct_response_tools
+                for tool_name in tool_names
+            ):
+                final_answer = "\n".join(
+                    str(result)
+                    for result in tool_results
+                )
+
+            else:
+                final_answer = generate_final_answer(
+                    user_input,
+                    tool_results
+                )
+
 
             print("AI：", final_answer)
 
