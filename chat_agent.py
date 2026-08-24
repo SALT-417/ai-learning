@@ -7,7 +7,11 @@ from tool_selector import (
 
 import json
 
-from memory_manager import save_history, load_history
+from memory_manager import (
+    save_history,
+    load_history,
+    get_recent_history
+)
 
 def main():
     conversation_history = load_history()
@@ -22,9 +26,14 @@ def main():
             print("AI学習エージェントを終了します。")
             break
 
+        recent_history = get_recent_history(
+            conversation_history,
+            max_messages=6
+        )
+
         result = select_tool(
             user_input,
-            conversation_history
+            recent_history
         )
 
         if result is None:
@@ -48,7 +57,7 @@ def main():
         tools = validate_tools(
             user_input,
             tools,
-            conversation_history
+            recent_history
         )
 
         conversation_history.append(
@@ -76,7 +85,7 @@ def main():
             )
 
             save_history(conversation_history)
-            
+
         else:
             answer = tool_data.get(
                 "answer",

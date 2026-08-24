@@ -29,3 +29,10 @@ def load_history():
 
     except FileNotFoundError:
         return []
+
+
+def get_recent_history(
+    conversation_history,
+    max_messages=6
+):
+    return conversation_history[-max_messages:]
