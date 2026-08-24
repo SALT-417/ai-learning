@@ -121,6 +121,40 @@ def select_tool(user_input, conversation_history=None):
                 '{"tools": ['
                 '{"tool": "get_study_topics", "topic": null}'
                 '], "answer": null}'
+
+                "学習トピックと学習時間の両方が明示されている場合は、"
+                "add_detailed_studyを選んでください。"
+
+                "この場合、add_study_minutesやadd_study_topicを"
+                "同時に選んではいけません。"
+
+                "例："
+                "ユーザー：今日はPythonを30分勉強した"
+                "回答："
+                '{"tools": ['
+                '{"tool": "add_detailed_study", '
+                '"topic": "Python", '
+                '"minutes": 30}'
+                '], "answer": null}'
+
+                "例："
+                "ユーザー：RAGを45分学習した"
+                "回答："
+                '{"tools": ['
+                '{"tool": "add_detailed_study", '
+                '"topic": "RAG", '
+                '"minutes": 45}'
+                '], "answer": null}'
+
+                "トピック別の学習時間を確認する場合は、"
+                "get_topic_study_totalsを選んでください。"
+
+                "例："
+                "ユーザー：トピック別の学習時間を教えて"
+                "回答："
+                '{"tools": ['
+                '{"tool": "get_topic_study_totals"}'
+                '], "answer": null}'
             )
         }
     ]
@@ -169,7 +203,29 @@ def validate_tools(
     if conversation_history is None:
         conversation_history = []
 
-    # 合計時間を知りたいか
+    # -------------------------
+    # トピック別集計の判定
+    # -------------------------
+    wants_topic_totals = any(
+        phrase in user_input
+        for phrase in [
+            "トピック別",
+            "テーマ別",
+            "内容別"
+        ]
+    ) and any(
+        word in user_input
+        for word in [
+            "時間",
+            "何分",
+            "学習時間",
+            "勉強時間"
+        ]
+    )
+
+    # -------------------------
+    # 全体の合計時間を知りたいか
+    # -------------------------
     time_words = [
         "時間",
         "何分",
@@ -191,23 +247,28 @@ def validate_tools(
     ]
 
     wants_total = (
-        any(
-            word in user_input
-            for word in strong_total_words
-        )
-        or (
+        not wants_topic_totals
+        and (
             any(
                 word in user_input
-                for word in time_words
+                for word in strong_total_words
             )
-            and any(
-                word in user_input
-                for word in context_total_words
+            or (
+                any(
+                    word in user_input
+                    for word in time_words
+                )
+                and any(
+                    word in user_input
+                    for word in context_total_words
+                )
             )
         )
     )
 
-    # 「○分」という具体的な時間があるか
+    # -------------------------
+    # 分数の取得
+    # -------------------------
     minutes_match = re.search(
         r"(\d+)分",
         user_input
@@ -215,9 +276,24 @@ def validate_tools(
 
     has_minutes = minutes_match is not None
 
-    # 学習時間を追加・記録したいか
+    # -------------------------
+    # トピック + 分数の詳細記録
+    # -------------------------
+    detailed_match = re.search(
+        r"(.+?)を(\d+)分(?:勉強した|学習した)",
+        user_input
+    )
+
+    wants_detailed_add = (
+        detailed_match is not None
+    )
+
+    # -------------------------
+    # 時間だけの記録
+    # -------------------------
     wants_add = (
         has_minutes
+        and not wants_detailed_add
         and any(
             word in user_input
             for word in [
@@ -230,7 +306,6 @@ def validate_tools(
         )
     )
 
-    # 明示的に記録しないと言っている場合
     refuses_add = any(
         phrase in user_input
         for phrase in [
@@ -244,8 +319,51 @@ def validate_tools(
 
     if refuses_add:
         wants_add = False
+        wants_detailed_add = False
 
-    # Qwenが誤って選択したadd Toolを除去
+    # -------------------------
+    # 詳細記録を最優先
+    # -------------------------
+    if wants_detailed_add:
+        topic = detailed_match.group(1).strip()
+        minutes = int(
+            detailed_match.group(2)
+        )
+
+        for prefix in [
+            "今日は",
+            "今日",
+            "さっき",
+            "今"
+        ]:
+            if topic.startswith(prefix):
+                topic = topic[
+                    len(prefix):
+                ].strip()
+
+        # 競合する記録Toolを一度除去
+        tools = [
+            tool
+            for tool in tools
+            if tool.get("tool") not in [
+                "add_study_minutes",
+                "add_study_topic",
+                "add_detailed_study"
+            ]
+        ]
+
+        tools.insert(
+            0,
+            {
+                "tool": "add_detailed_study",
+                "topic": topic,
+                "minutes": minutes
+            }
+        )
+
+    # -------------------------
+    # 時間だけの記録
+    # -------------------------
     if not wants_add:
         tools = [
             tool
@@ -258,7 +376,6 @@ def validate_tools(
         for tool in tools
     ]
 
-    # 必要なのにadd Toolがなければ補完
     if (
         wants_add
         and "add_study_minutes" not in tool_names
@@ -275,12 +392,14 @@ def validate_tools(
             }
         )
 
+    # -------------------------
+    # 全体の合計時間
+    # -------------------------
     tool_names = [
         tool.get("tool")
         for tool in tools
     ]
 
-    # 合計Toolを補完
     if (
         wants_total
         and "get_total_study_minutes" not in tool_names
@@ -292,10 +411,30 @@ def validate_tools(
             }
         )
 
-    # 時間換算を求めているか
+    # -------------------------
+    # トピック別学習時間
+    # -------------------------
+    tool_names = [
+        tool.get("tool")
+        for tool in tools
+    ]
+
+    if (
+        wants_topic_totals
+        and "get_topic_study_totals" not in tool_names
+    ):
+        tools.append(
+            {
+                "tool": "get_topic_study_totals"
+            }
+        )
+
+    # -------------------------
+    # 分 → 時間・分への換算
+    # -------------------------
     wants_conversion = any(
-        word in user_input
-        for word in [
+        phrase in user_input
+        for phrase in [
             "何時間何分",
             "時間と分",
             "時間にすると"
@@ -313,7 +452,9 @@ def validate_tools(
     ):
         previous_minutes = None
 
-        for message in reversed(conversation_history):
+        for message in reversed(
+            conversation_history
+        ):
             content = message.get(
                 "content",
                 ""
@@ -338,7 +479,9 @@ def validate_tools(
                 }
             )
 
-    # 学習トピックを記録したいか
+    # -------------------------
+    # 学習トピックだけの記録
+    # -------------------------
     topic_match = re.search(
         r"(.+?)を(?:勉強した|学習した)",
         user_input
@@ -349,8 +492,6 @@ def validate_tools(
         for phrase in [
             "何を勉強した",
             "何を学習した",
-            "何を勉強した？",
-            "何を学習した？",
             "どんなことを勉強した",
             "どんなことを学習した"
         ]
@@ -365,16 +506,16 @@ def validate_tools(
     if wants_topic_add:
         topic = topic_match.group(1).strip()
 
-        # 「今日はRAG」のようになった場合、
-        # 先頭の日時表現を取り除く
         for prefix in [
             "今日は",
             "今日",
             "さっき",
-            "今",
+            "今"
         ]:
             if topic.startswith(prefix):
-                topic = topic[len(prefix):].strip()
+                topic = topic[
+                    len(prefix):
+                ].strip()
 
         tool_names = [
             tool.get("tool")
@@ -392,13 +533,17 @@ def validate_tools(
                 }
             )
 
-    # 存在するToolだけを許可
+    # -------------------------
+    # 許可されたToolだけ残す
+    # -------------------------
     allowed_tools = [
         "add_study_minutes",
         "get_total_study_minutes",
         "convert_minutes_to_hours",
         "add_study_topic",
-        "get_study_topics"
+        "get_study_topics",
+        "add_detailed_study",
+        "get_topic_study_totals"
     ]
 
     tools = [
@@ -427,22 +572,21 @@ def execute_tools(tools):
             continue
 
         tool_function = tool_config["function"]
-        argument_name = tool_config["argument"]
+        argument_names = tool_config["arguments"]
 
         try:
-            if argument_name is None:
-                result = tool_function()
+            arguments = []
 
-            else:
+            valid = True
+
+            for argument_name in argument_names:
                 argument_value = tool.get(
                     argument_name
                 )
 
                 if argument_value is None:
-                    tool_results.append(
-                        f"{tool_name}を実行できませんでした。"
-                    )
-                    continue
+                    valid = False
+                    break
 
                 if (
                     argument_name == "minutes"
@@ -451,10 +595,8 @@ def execute_tools(tools):
                         or argument_value <= 0
                     )
                 ):
-                    tool_results.append(
-                        f"{tool_name}を実行できませんでした。"
-                    )
-                    continue
+                    valid = False
+                    break
 
                 if (
                     argument_name == "topic"
@@ -463,14 +605,22 @@ def execute_tools(tools):
                         or not argument_value.strip()
                     )
                 ):
-                    tool_results.append(
-                        f"{tool_name}を実行できませんでした。"
-                    )
-                    continue
+                    valid = False
+                    break
 
-                result = tool_function(
+                arguments.append(
                     argument_value
                 )
+
+            if not valid:
+                tool_results.append(
+                    f"{tool_name}を実行できませんでした。"
+                )
+                continue
+
+            result = tool_function(
+                *arguments
+            )
 
             tool_results.append(result)
 

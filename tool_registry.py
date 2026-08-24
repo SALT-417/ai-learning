@@ -9,26 +9,41 @@ from study_tools import (
     convert_minutes_to_hours
 )
 
+from detailed_study_tools import (
+    add_detailed_study,
+    get_topic_study_totals
+)
 
 TOOL_REGISTRY = {
     "add_study_minutes": {
         "function": add_study_minutes,
-        "argument": "minutes"
+        "arguments": ["minutes"]
     },
     "get_total_study_minutes": {
         "function": get_total_study_minutes,
-        "argument": None
+        "arguments": []
     },
     "convert_minutes_to_hours": {
         "function": convert_minutes_to_hours,
-        "argument": "minutes"
+        "arguments": ["minutes"]
     },
     "add_study_topic": {
         "function": add_study_topic,
-        "argument": "topic"
+        "arguments": ["topic"]
     },
     "get_study_topics": {
         "function": get_study_topics,
-        "argument": None
+        "arguments": []
+    },
+    "add_detailed_study": {
+        "function": add_detailed_study,
+        "arguments": [
+            "topic",
+            "minutes"
+        ]
+    },
+    "get_topic_study_totals": {
+        "function": get_topic_study_totals,
+        "arguments": []
     }
 }

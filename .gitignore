@@ -4,3 +4,4 @@ __pycache__/
 study_records.csv
 conversation_history.json
 study_topics.csv
+detailed_study_records.csv
