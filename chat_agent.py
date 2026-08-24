@@ -10,8 +10,10 @@ import json
 from memory_manager import (
     save_history,
     load_history,
-    get_recent_history
+    split_history,
+    summarize_history
 )
+
 
 def main():
     conversation_history = load_history()
@@ -26,14 +28,34 @@ def main():
             print("AI学習エージェントを終了します。")
             break
 
-        recent_history = get_recent_history(
+        old_history, recent_history = split_history(
             conversation_history,
-            max_messages=6
+            recent_count=6
         )
+
+        memory_summary = summarize_history(
+            old_history
+        )
+
+        context_history = []
+
+        if memory_summary:
+            context_history.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "過去の会話から作成した長期記憶です。"
+                        "必要な場合だけ参考にしてください。\n"
+                        f"{memory_summary}"
+                    )
+                }
+            )
+
+        context_history.extend(recent_history)
 
         result = select_tool(
             user_input,
-            recent_history
+            context_history
         )
 
         if result is None:
@@ -57,7 +79,7 @@ def main():
         tools = validate_tools(
             user_input,
             tools,
-            recent_history
+            context_history
         )
 
         conversation_history.append(
@@ -102,6 +124,7 @@ def main():
             )
 
             save_history(conversation_history)
+
 
 if __name__ == "__main__":
     main()

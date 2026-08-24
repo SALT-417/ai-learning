@@ -82,6 +82,18 @@ def select_tool(user_input, conversation_history=None):
                 "数値計算が必要な場合は、計算結果を慎重に確認してください。"
                 "分を時間と分に換算する場合は、"
                 "60で割った商を時間、余りを分として正確に回答してください。"
+                "Toolが不要な普通の質問では、answerにユーザーへの自然な回答を書いてください。"
+                "answerの中でTool名、関数名、JSON、内部処理について説明してはいけません。"
+                "add_study_minutes、get_total_study_minutes、"
+                "convert_minutes_to_hoursなどの内部名をユーザーに見せてはいけません。"
+                "学習方法について相談された場合は、学習相談として普通に回答してください。"
+
+                "Toolが不要な普通の質問に回答するときも、"
+                "過去の会話履歴を必ず参考にしてください。"
+                "ユーザーがすでに伝えた目標や希望を、"
+                "もう一度質問してはいけません。"
+                "過去の会話から回答できる場合は、"
+                "その情報を使って具体的に回答してください。"
             )
         }
     ]
@@ -130,47 +142,93 @@ def validate_tools(
     if conversation_history is None:
         conversation_history = []
 
-    tool_names = [
-        tool.get("tool")
-        for tool in tools
-    ]
-
+    # 合計時間を知りたいか
     wants_total = any(
         word in user_input
         for word in [
             "合計",
             "全部で",
             "今まで",
-            "これまで"
+            "これまで",
+            "累計",
+            "トータル"
         ]
     )
 
-    wants_add = any(
-        word in user_input
-        for word in [
-            "勉強した",
-            "学習した",
-            "記録して"
+    # 「○分」という具体的な時間があるか
+    minutes_match = re.search(
+        r"(\d+)分",
+        user_input
+    )
+
+    has_minutes = minutes_match is not None
+
+    # 学習時間を追加・記録したいか
+    wants_add = (
+        has_minutes
+        and any(
+            word in user_input
+            for word in [
+                "勉強した",
+                "学習した",
+                "記録して",
+                "追加して",
+                "やった"
+            ]
+        )
+    )
+
+    # 明示的に記録しないと言っている場合
+    refuses_add = any(
+        phrase in user_input
+        for phrase in [
+            "記録しない",
+            "追加しない",
+            "記録しないで",
+            "追加しないで",
+            "勉強していません"
         ]
     )
 
+    if refuses_add:
+        wants_add = False
+
+    # Qwenが誤って選択したadd Toolを除去
+    if not wants_add:
+        tools = [
+            tool
+            for tool in tools
+            if tool.get("tool") != "add_study_minutes"
+        ]
+
+    tool_names = [
+        tool.get("tool")
+        for tool in tools
+    ]
+
+    # 必要なのにadd Toolがなければ補完
     if (
         wants_add
         and "add_study_minutes" not in tool_names
     ):
-        match = re.search(r"(\d+)分", user_input)
+        minutes = int(
+            minutes_match.group(1)
+        )
 
-        if match:
-            minutes = int(match.group(1))
+        tools.insert(
+            0,
+            {
+                "tool": "add_study_minutes",
+                "minutes": minutes
+            }
+        )
 
-            tools.insert(
-                0,
-                {
-                    "tool": "add_study_minutes",
-                    "minutes": minutes
-                }
-            )
+    tool_names = [
+        tool.get("tool")
+        for tool in tools
+    ]
 
+    # 合計Toolを補完
     if (
         wants_total
         and "get_total_study_minutes" not in tool_names
@@ -182,11 +240,7 @@ def validate_tools(
             }
         )
 
-    tool_names = [
-        tool.get("tool")
-        for tool in tools
-    ]
-
+    # 時間換算を求めているか
     wants_conversion = any(
         word in user_input
         for word in [
@@ -196,6 +250,11 @@ def validate_tools(
         ]
     )
 
+    tool_names = [
+        tool.get("tool")
+        for tool in tools
+    ]
+
     if (
         wants_conversion
         and "convert_minutes_to_hours" not in tool_names
@@ -203,7 +262,10 @@ def validate_tools(
         previous_minutes = None
 
         for message in reversed(conversation_history):
-            content = message.get("content", "")
+            content = message.get(
+                "content",
+                ""
+            )
 
             match = re.search(
                 r"(\d+)分",
@@ -223,6 +285,19 @@ def validate_tools(
                     "minutes": previous_minutes
                 }
             )
+
+    # 存在するToolだけを許可
+    allowed_tools = [
+        "add_study_minutes",
+        "get_total_study_minutes",
+        "convert_minutes_to_hours"
+    ]
+
+    tools = [
+        tool
+        for tool in tools
+        if tool.get("tool") in allowed_tools
+    ]
 
     return tools
 

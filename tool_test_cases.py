@@ -63,6 +63,14 @@ test_cases = [
         "expected": [
             "get_total_study_minutes"
         ]
+    },
+    {
+        "input": "Pythonを重点的に勉強したいです",
+        "expected": []
+    },
+    {
+        "input": "今日は何を優先して勉強すると良いですか？",
+        "expected": []
     }
 ]
 
