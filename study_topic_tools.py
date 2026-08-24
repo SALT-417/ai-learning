@@ -1,4 +1,5 @@
 import csv
+from storage_paths import get_data_path
 
 
 TOPIC_FILE = "study_topics.csv"
@@ -11,7 +12,7 @@ def add_study_topic(topic):
     topic = topic.strip()
 
     with open(
-        TOPIC_FILE,
+        get_data_path(TOPIC_FILE),
         "a",
         encoding="utf-8",
         newline=""
@@ -27,7 +28,7 @@ def get_study_topics():
 
     try:
         with open(
-            TOPIC_FILE,
+            get_data_path(TOPIC_FILE),
             "r",
             encoding="utf-8"
         ) as file:

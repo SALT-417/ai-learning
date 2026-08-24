@@ -1,5 +1,6 @@
 import json
 import requests
+from storage_paths import get_data_path
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen2.5:3b"
@@ -9,7 +10,7 @@ MEMORY_FILE = "conversation_history.json"
 
 def save_history(conversation_history):
     with open(
-        MEMORY_FILE,
+        get_data_path(MEMORY_FILE),
         "w",
         encoding="utf-8"
     ) as file:
@@ -24,7 +25,7 @@ def save_history(conversation_history):
 def load_history():
     try:
         with open(
-            MEMORY_FILE,
+            get_data_path(MEMORY_FILE),
             "r",
             encoding="utf-8"
         ) as file:

@@ -1,5 +1,6 @@
 import csv
 from detailed_study_tools import get_study_analysis_data
+from storage_paths import get_data_path
 
 GOAL_FILE = "study_goals.csv"
 
@@ -17,7 +18,7 @@ def set_study_goal(topic, target_minutes):
 
     try:
         with open(
-            GOAL_FILE,
+            get_data_path(GOAL_FILE),
             "r",
             encoding="utf-8"
         ) as file:
@@ -33,7 +34,7 @@ def set_study_goal(topic, target_minutes):
     goals[topic] = target_minutes
 
     with open(
-        GOAL_FILE,
+        get_data_path(GOAL_FILE),
         "w",
         encoding="utf-8",
         newline=""
@@ -62,7 +63,7 @@ def get_goal_progress(topic):
 
     try:
         with open(
-            GOAL_FILE,
+            get_data_path(GOAL_FILE),
             "r",
             encoding="utf-8"
         ) as file:

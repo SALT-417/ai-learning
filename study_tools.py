@@ -1,4 +1,5 @@
 import csv
+from storage_paths import get_data_path
 
 
 STUDY_FILE = "study_records.csv"
@@ -6,7 +7,7 @@ STUDY_FILE = "study_records.csv"
 
 def add_study_minutes(minutes):
     with open(
-        STUDY_FILE,
+        get_data_path(STUDY_FILE),
         "a",
         encoding="utf-8",
         newline=""
@@ -25,7 +26,11 @@ def get_total_study_minutes():
     total = 0
 
     try:
-        with open(STUDY_FILE, "r", encoding="utf-8") as file:
+        with open(
+            get_data_path(STUDY_FILE),
+            "r",
+            encoding="utf-8"
+        ) as file:
             reader = csv.reader(file)
 
             for row in reader:

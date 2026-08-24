@@ -1,4 +1,5 @@
 import csv
+from storage_paths import get_data_path
 
 
 DETAIL_FILE = "detailed_study_records.csv"
@@ -14,7 +15,7 @@ def add_detailed_study(topic, minutes):
     topic = topic.strip()
 
     with open(
-        DETAIL_FILE,
+        get_data_path(DETAIL_FILE),
         "a",
         encoding="utf-8",
         newline=""
@@ -31,7 +32,7 @@ def get_topic_study_totals():
 
     try:
         with open(
-            DETAIL_FILE,
+            get_data_path(DETAIL_FILE),
             "r",
             encoding="utf-8"
         ) as file:
@@ -67,7 +68,7 @@ def get_study_analysis_data():
 
     try:
         with open(
-            DETAIL_FILE,
+            get_data_path(DETAIL_FILE),
             "r",
             encoding="utf-8"
         ) as file:
