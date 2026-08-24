@@ -70,17 +70,24 @@ def select_tool(user_input):
         "format": "json"
     }
 
-    response = requests.post(
-        OLLAMA_URL,
-        json=payload,
-        timeout=60
-    )
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json=payload,
+            timeout=60
+        )
 
-    response.raise_for_status()
+        response.raise_for_status()
 
-    data = response.json()
+        data = response.json()
 
-    return data["message"]["content"]
+        return data["message"]["content"]
+
+    except requests.RequestException as error:
+        print("Ollamaとの通信に失敗しました。")
+        print("詳細:", error)
+
+        return None
 
 
 def validate_tools(user_input, tools):
@@ -200,23 +207,34 @@ def generate_final_answer(user_input, tool_results):
         "stream": False
     }
 
-    response = requests.post(
-        OLLAMA_URL,
-        json=payload,
-        timeout=60
-    )
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json=payload,
+            timeout=60
+        )
 
-    response.raise_for_status()
+        response.raise_for_status()
 
-    data = response.json()
+        data = response.json()
 
-    return data["message"]["content"]
+        return data["message"]["content"]
+
+    except requests.RequestException as error:
+        print("最終回答の生成中にOllamaとの通信に失敗しました。")
+        print("詳細:", error)
+
+        return "\n".join(tool_results)
 
 
 def main():
     user_input = input("あなた：")
 
     result = select_tool(user_input)
+
+    if result is None:
+        print("AIとの通信に失敗したため、Toolは実行しませんでした。")
+        return
 
     try:
         tool_data = json.loads(result)
