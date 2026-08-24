@@ -155,6 +155,31 @@ def select_tool(user_input, conversation_history=None):
                 '{"tools": ['
                 '{"tool": "get_topic_study_totals"}'
                 '], "answer": null}'
+
+                "学習状況の分析を求められた場合は、"
+                "get_study_analysis_factsを選んでください。"
+
+                "例："
+                "ユーザー：今の学習状況を分析して"
+                "回答："
+                '{"tools": ['
+                '{"tool": "get_study_analysis_facts"}'
+                '], "answer": null}'
+
+                "学習状況の分析を求められた場合は、"
+                "get_study_analysis_factsを選んでください。"
+
+                "例："
+                "ユーザー：今の学習状況を分析して"
+                "回答："
+                '{"tools": [{"tool": "get_study_analysis_facts"}], '
+                '"answer": null}'
+
+                "重要：回答は必ず有効なJSONだけにしてください。"
+                "JSONの前後に説明文、回答文、Markdown、コードブロックを"
+                "追加してはいけません。"
+                "キーと文字列には必ずダブルクォートを使用してください。"
+                "toolsとanswerは必ずJSONオブジェクトの直下に置いてください。"
             )
         }
     ]
@@ -543,7 +568,8 @@ def validate_tools(
         "add_study_topic",
         "get_study_topics",
         "add_detailed_study",
-        "get_topic_study_totals"
+        "get_topic_study_totals",
+        "get_study_analysis_facts"
     ]
 
     tools = [
@@ -633,7 +659,25 @@ def execute_tools(tools):
 
 
 def generate_final_answer(user_input, tool_results):
-    combined_result = "\n".join(tool_results)
+    formatted_results = []
+
+    for result in tool_results:
+        if isinstance(result, dict):
+            formatted_results.append(
+                json.dumps(
+                    result,
+                    ensure_ascii=False,
+                    indent=2
+                )
+            )
+        else:
+            formatted_results.append(
+                str(result)
+            )
+
+    combined_result = "\n".join(
+        formatted_results
+    )
 
     messages = [
         {
@@ -653,6 +697,20 @@ def generate_final_answer(user_input, tool_results):
                 "数値を自分で計算してはいけません。"
                 "Tool実行結果をそのまま正確に伝えてください。"
                 "短く自然な日本語で回答してください。"
+
+                "学習時間の多い・少ないという相対比較は、"
+                "Tool結果に含まれる数値だけを根拠にしてください。"
+                "『十分』『不足』『もっと勉強すべき』など、"
+                "基準が与えられていない評価や提案を勝手に追加してはいけません。"
+
+                "Tool結果にmost_studiedやleast_studiedが含まれている場合は、"
+                "その内容をそのまま事実として説明してください。"
+
+                "『十分』『不足』『良い』『悪い』『順調』などの評価語は、"
+                "明示的な基準がTool結果に含まれていない限り使用してはいけません。"
+
+                "学習分析では、合計時間、トピック数、各トピックの時間、"
+                "most_studied、least_studiedの事実だけを説明してください。"
             )
         },
         {

@@ -11,7 +11,8 @@ from study_tools import (
 
 from detailed_study_tools import (
     add_detailed_study,
-    get_topic_study_totals
+    get_topic_study_totals,
+    get_study_analysis_facts
 )
 
 TOOL_REGISTRY = {
@@ -44,6 +45,10 @@ TOOL_REGISTRY = {
     },
     "get_topic_study_totals": {
         "function": get_topic_study_totals,
+        "arguments": []
+    },
+    "get_study_analysis_facts": {
+        "function": get_study_analysis_facts,
         "arguments": []
     }
 }
