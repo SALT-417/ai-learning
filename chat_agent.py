@@ -106,13 +106,12 @@ def main():
                 "add_detailed_study"
             ]
 
-            if any(
-                tool_name in direct_response_tools
-                for tool_name in tool_names
+            if (
+                len(tools) == 1
+                and tool_names[0] in direct_response_tools
             ):
-                final_answer = "\n".join(
-                    str(result)
-                    for result in tool_results
+                final_answer = str(
+                    tool_results[0]
                 )
 
             else:
