@@ -36,3 +36,15 @@ def get_total_study_minutes():
         return "まだ学習記録がありません。"
 
     return f"これまでの合計学習時間は{total}分です。"
+
+def convert_minutes_to_hours(minutes):
+    if not isinstance(minutes, int) or minutes < 0:
+        return "正しい分数を指定してください。"
+
+    hours = minutes // 60
+    remaining_minutes = minutes % 60
+
+    return (
+        f"{minutes}分は"
+        f"{hours}時間{remaining_minutes}分です。"
+    )

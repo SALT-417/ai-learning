@@ -1,4 +1,8 @@
-from study_tools import add_study_minutes, get_total_study_minutes
+from study_tools import (
+    add_study_minutes,
+    get_total_study_minutes,
+    convert_minutes_to_hours
+)
 import json
 import re
 import requests
@@ -8,7 +12,10 @@ OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen2.5:3b"
 
 
-def select_tool(user_input):
+def select_tool(user_input, conversation_history=None):
+    if conversation_history is None:
+        conversation_history = []
+    
     messages = [
         {
             "role": "system",
@@ -32,13 +39,30 @@ def select_tool(user_input):
 
                 "ユーザーの依頼に複数の要求が含まれている場合は、"
                 "必要なToolをすべて実行順にtoolsへ追加してください。"
-
+                "過去の会話履歴も参考にしてください。"
+                "現在のユーザー発言だけでは意味が不明な場合は、"
+                "直前までの会話からユーザーの意図を判断してください。"
+                
                 "例："
                 "ユーザー：今日は30分勉強した。合計時間も教えて"
                 "回答："
                 '{"tools": ['
                 '{"tool": "add_study_minutes", "minutes": 30},'
                 '{"tool": "get_total_study_minutes", "minutes": null}'
+                '], "answer": null}'
+
+                "分を時間と分に換算する場合："
+                '{"tools": ['
+                '{"tool": "convert_minutes_to_hours", "minutes": 527}'
+                '], "answer": null}'
+
+                "会話例："
+                "ユーザー：今までの合計学習時間を教えて"
+                "アシスタント：これまでの合計学習時間は527分です。"
+                "ユーザー：それは何時間何分ですか？"
+                "回答："
+                '{"tools": ['
+                '{"tool": "convert_minutes_to_hours", "minutes": 527}'
                 '], "answer": null}'
 
                 "ユーザー：45分勉強したから記録して、"
@@ -55,13 +79,21 @@ def select_tool(user_input):
                 "ユーザーが学習したことや記録することを"
                 "明示していない場合は、"
                 "add_study_minutesを選んではいけません。"
+                "数値計算が必要な場合は、計算結果を慎重に確認してください。"
+                "分を時間と分に換算する場合は、"
+                "60で割った商を時間、余りを分として正確に回答してください。"
             )
-        },
+        }
+    ]
+
+    messages.extend(conversation_history)
+
+    messages.append(
         {
             "role": "user",
             "content": user_input
         }
-    ]
+    )
 
     payload = {
         "model": MODEL_NAME,
@@ -90,7 +122,14 @@ def select_tool(user_input):
         return None
 
 
-def validate_tools(user_input, tools):
+def validate_tools(
+    user_input,
+    tools,
+    conversation_history=None
+):
+    if conversation_history is None:
+        conversation_history = []
+
     tool_names = [
         tool.get("tool")
         for tool in tools
@@ -143,6 +182,48 @@ def validate_tools(user_input, tools):
             }
         )
 
+    tool_names = [
+        tool.get("tool")
+        for tool in tools
+    ]
+
+    wants_conversion = any(
+        word in user_input
+        for word in [
+            "何時間何分",
+            "時間と分",
+            "時間にすると"
+        ]
+    )
+
+    if (
+        wants_conversion
+        and "convert_minutes_to_hours" not in tool_names
+    ):
+        previous_minutes = None
+
+        for message in reversed(conversation_history):
+            content = message.get("content", "")
+
+            match = re.search(
+                r"(\d+)分",
+                content
+            )
+
+            if match:
+                previous_minutes = int(
+                    match.group(1)
+                )
+                break
+
+        if previous_minutes is not None:
+            tools.append(
+                {
+                    "tool": "convert_minutes_to_hours",
+                    "minutes": previous_minutes
+                }
+            )
+
     return tools
 
 
@@ -168,6 +249,18 @@ def execute_tools(tools):
             result = get_total_study_minutes()
             tool_results.append(result)
 
+        elif tool_name == "convert_minutes_to_hours":
+            minutes = tool.get("minutes")
+
+            if isinstance(minutes, int) and minutes >= 0:
+                result = convert_minutes_to_hours(minutes)
+                tool_results.append(result)
+
+            else:
+                tool_results.append(
+                    "時間を換算できませんでした。"
+                )    
+
         else:
             tool_results.append(
                 f"未対応のToolです：{tool_name}"
@@ -185,11 +278,18 @@ def generate_final_answer(user_input, tool_results):
             "content": (
                 "あなたはAI学習をサポートするアシスタントです。"
                 "Toolの実行結果だけを根拠に最終回答してください。"
-                "Tool実行結果にない情報を推測してはいけません。"
-                "実行されていない処理を実行済みとして"
-                "回答してはいけません。"
+                "Tool実行結果にない情報を推測・追加してはいけません。"
+                "実行されていない処理を実行済みとして回答してはいけません。"
+
+                "特に重要："
+                "Tool実行結果が『527分です』のように分だけを返した場合、"
+                "時間や時間＋分への換算を勝手に追加してはいけません。"
+                "時間換算はconvert_minutes_to_hoursの実行結果がある場合だけ"
+                "回答に含めてください。"
+
+                "数値を自分で計算してはいけません。"
+                "Tool実行結果をそのまま正確に伝えてください。"
                 "短く自然な日本語で回答してください。"
-                "分数を時間に換算する場合は正確に計算し、勝手に丸めないでください。"
             )
         },
         {
