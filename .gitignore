@@ -6,3 +6,4 @@ conversation_history.json
 study_topics.csv
 detailed_study_records.csv
 study_goals.csv
+.venv/
