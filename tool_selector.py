@@ -233,11 +233,23 @@ def select_tool(user_input, conversation_history=None):
         response.raise_for_status()
 
         data = response.json()
+        content = data["message"]["content"]
 
-        return data["message"]["content"]
+        if not isinstance(content, str):
+            raise TypeError(
+                "Ollamaのmessage.contentが文字列ではありません。"
+            )
+
+        return content
 
     except requests.RequestException as error:
         print("Ollamaとの通信に失敗しました。")
+        print("詳細:", error)
+
+        return None
+
+    except (KeyError, TypeError, ValueError) as error:
+        print("Ollamaの返答を解析できませんでした。")
         print("詳細:", error)
 
         return None
@@ -310,6 +322,87 @@ def validate_tools(
                     word in user_input
                     for word in context_total_words
                 )
+            )
+        )
+    )
+
+    # -------------------------
+    # 学習トピック一覧の判定
+    # -------------------------
+    topic_list_phrases = [
+        "何を勉強した",
+        "何を学習した",
+        "学習したトピック",
+        "勉強したトピック",
+        "勉強した内容の一覧",
+        "学習した内容の一覧",
+        "学習トピックの一覧"
+    ]
+
+    topic_list_analysis_phrases = [
+        "分析",
+        "一番",
+        "最も",
+        "最多",
+        "最少",
+        "少ない",
+        "比較"
+    ]
+
+    topic_list_advice_phrases = [
+        "何を勉強したら",
+        "何を学習したら",
+        "何を勉強すべき",
+        "何を学習すべき",
+        "何を勉強したい",
+        "何を学習したい"
+    ]
+
+    wants_topic_list = (
+        any(
+            phrase in user_input
+            for phrase in topic_list_phrases
+        )
+        and not wants_topic_totals
+        and not any(
+            phrase in user_input
+            for phrase in topic_list_analysis_phrases
+        )
+        and not any(
+            phrase in user_input
+            for phrase in topic_list_advice_phrases
+        )
+    )
+
+    # -------------------------
+    # 学習分析の判定
+    # -------------------------
+    wants_analysis = (
+        not wants_topic_totals
+        and (
+            (
+                "分析" in user_input
+                and any(
+                    word in user_input
+                    for word in [
+                        "学習",
+                        "勉強",
+                        "トピック"
+                    ]
+                )
+            )
+            or (
+                any(
+                    word in user_input
+                    for word in [
+                        "一番",
+                        "最も",
+                        "最多",
+                        "最少",
+                        "少ない"
+                    ]
+                )
+                and "トピック" in user_input
             )
         )
     )
@@ -590,6 +683,65 @@ def validate_tools(
             )
 
     # -------------------------
+    # トピック別集計・分析・一覧要求
+    # -------------------------
+    confirmed_write_tools = []
+
+    if wants_detailed_add:
+        confirmed_write_tools.append(
+            {
+                "tool": "add_detailed_study",
+                "topic": topic,
+                "minutes": minutes
+            }
+        )
+
+    elif wants_add:
+        confirmed_write_tools.append(
+            {
+                "tool": "add_study_minutes",
+                "minutes": int(minutes_match.group(1))
+            }
+        )
+
+    elif wants_topic_add:
+        confirmed_write_tools.append(
+            {
+                "tool": "add_study_topic",
+                "topic": topic
+            }
+        )
+
+    if wants_topic_totals:
+        tools = confirmed_write_tools + [
+            {
+                "tool": "get_topic_study_totals"
+            }
+        ]
+
+    elif wants_analysis:
+        tools = confirmed_write_tools + [
+            {
+                "tool": "get_study_analysis_facts"
+            }
+        ]
+
+    elif wants_topic_list:
+        tools = confirmed_write_tools + [
+            {
+                "tool": "get_study_topics"
+            }
+        ]
+
+        if wants_total:
+            tools.append(
+                {
+                    "tool": "get_total_study_minutes",
+                    "minutes": None
+                }
+            )
+
+    # -------------------------
     # 許可されたToolだけ残す
     # -------------------------
     allowed_tools = [
@@ -781,7 +933,7 @@ def generate_final_answer(user_input, tool_results):
         print("最終回答の生成中にOllamaとの通信に失敗しました。")
         print("詳細:", error)
 
-        return "\n".join(tool_results)
+        return "\n".join(formatted_results)
 
 
 def main():

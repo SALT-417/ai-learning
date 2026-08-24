@@ -1,9 +1,9 @@
 from tool_selector import (
     select_tool,
     validate_tools,
-    execute_tools,
-    generate_final_answer
+    execute_tools
 )
+from response_formatter import format_tool_results
 
 import json
 
@@ -75,7 +75,26 @@ def main():
             )
             continue
 
+        if not isinstance(tool_data, dict):
+            print(
+                "AI：AIの返答形式が正しくありませんでした。"
+            )
+            continue
+
         tools = tool_data.get("tools", [])
+        answer = tool_data.get("answer")
+
+        if (
+            not isinstance(tools, list)
+            or not all(
+                isinstance(tool, dict)
+                for tool in tools
+            )
+        ):
+            print(
+                "AI：AIの返答形式が正しくありませんでした。"
+            )
+            continue
 
         tools = validate_tools(
             user_input,
@@ -83,6 +102,14 @@ def main():
             context_history
         )
 
+        if (
+            not tools
+            and not isinstance(answer, str)
+        ):
+            print(
+                "AI：有効な回答を取得できませんでした。"
+            )
+            continue
 
         conversation_history.append(
             {
@@ -93,33 +120,9 @@ def main():
 
         if tools:
             tool_results = execute_tools(tools)
-
-            tool_names = [
-                tool.get("tool")
-                for tool in tools
-            ]
-
-            direct_response_tools = [
-                "set_study_goal",
-                "add_study_minutes",
-                "add_study_topic",
-                "add_detailed_study"
-            ]
-
-            if (
-                len(tools) == 1
-                and tool_names[0] in direct_response_tools
-            ):
-                final_answer = str(
-                    tool_results[0]
-                )
-
-            else:
-                final_answer = generate_final_answer(
-                    user_input,
-                    tool_results
-                )
-
+            final_answer = format_tool_results(
+                tool_results
+            )
 
             print("AI：", final_answer)
 
@@ -133,11 +136,6 @@ def main():
             save_history(conversation_history)
 
         else:
-            answer = tool_data.get(
-                "answer",
-                "回答を取得できませんでした。"
-            )
-
             print("AI：", answer)
 
             conversation_history.append(
