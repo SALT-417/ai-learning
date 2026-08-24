@@ -1,3 +1,4 @@
+from tool_registry import TOOL_REGISTRY
 from study_tools import (
     add_study_minutes,
     get_total_study_minutes,
@@ -308,37 +309,41 @@ def execute_tools(tools):
     for tool in tools:
         tool_name = tool.get("tool")
 
-        if tool_name == "add_study_minutes":
-            minutes = tool.get("minutes")
+        tool_config = TOOL_REGISTRY.get(
+            tool_name
+        )
 
-            if isinstance(minutes, int) and minutes > 0:
-                result = add_study_minutes(minutes)
-                tool_results.append(result)
-
-            else:
-                tool_results.append(
-                    "学習時間を記録できませんでした。"
-                )
-
-        elif tool_name == "get_total_study_minutes":
-            result = get_total_study_minutes()
-            tool_results.append(result)
-
-        elif tool_name == "convert_minutes_to_hours":
-            minutes = tool.get("minutes")
-
-            if isinstance(minutes, int) and minutes >= 0:
-                result = convert_minutes_to_hours(minutes)
-                tool_results.append(result)
-
-            else:
-                tool_results.append(
-                    "時間を換算できませんでした。"
-                )    
-
-        else:
+        if tool_config is None:
             tool_results.append(
                 f"未対応のToolです：{tool_name}"
+            )
+            continue
+
+        tool_function = tool_config["function"]
+        requires_minutes = tool_config[
+            "requires_minutes"
+        ]
+
+        try:
+            if requires_minutes:
+                minutes = tool.get("minutes")
+
+                if not isinstance(minutes, int) or minutes <= 0:
+                    tool_results.append(
+                        f"{tool_name}を実行できませんでした。"
+                    )
+                    continue
+
+                result = tool_function(minutes)
+
+            else:
+                result = tool_function()
+
+            tool_results.append(result)
+
+        except Exception as error:
+            tool_results.append(
+                f"{tool_name}の実行中にエラーが発生しました：{error}"
             )
 
     return tool_results
