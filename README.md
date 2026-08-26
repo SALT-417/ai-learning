@@ -1,369 +1,159 @@
-# AI学習記録ツール
+# AI Learning
 
-AI学習の時間、トピック、詳細記録、目標を対話形式で記録・確認するWindows向けCLIツールです。
+AIエンジニアリングの学習を、自然な日本語で記録・集計できるローカルCLIツールです。ローカルLLMに「どの処理を実行するか」を判断させ、学習時間、トピック、目標、詳細記録、会話履歴をCSV／JSONに保存します。
 
-正式入口は `chat_agent.py` だけです。ほかのPythonファイルは、内部モジュール、テスト、初期学習用、確認用のいずれかです。
+このリポジトリは、LLMを単なるチャット相手として使うだけでなく、自然言語とPythonの処理を安全につなぐ仕組みを学び、改善した過程をまとめたものです。
 
-## CLI版MVPの主要機能
+> **関連プロジェクト**
+>
+> **AI OFFICE** は成果を見せるためのポートフォリオアプリ、**AI Learning** は学習を継続しながらローカルLLM活用を記録・検証するためのツール、という位置付けです。
 
-- 学習時間の追加と合計確認
-- 学習トピックの追加と一覧表示
+## できること
+
+- 学習時間の追加と累計の確認
+- 学習トピックの追加と履歴表示
 - トピックと時間を組み合わせた詳細記録
-- トピック別学習時間の集計
-- 合計時間、トピック数、最多・最少を含む学習分析
+- トピック別学習時間の集計と学習状況の分析
 - トピック別目標の設定と進捗確認
-- 記録と読取りを組み合わせた複数依頼
-- Ollamaを使った一般会話
+- 1つの入力に含まれる複数依頼の順次実行
+- 直近の会話履歴を踏まえた応答
+- ツールを使わない一般的な学習相談
 
-Toolの実行結果はOllamaへ再送せず、確定した書式で表示します。一般会話だけはOllamaの回答を使用します。
+## 仕組み
 
-## 確認済み環境
+```text
+ユーザー入力
+    ↓
+Ollama / qwen2.5:3b がJSON形式でツールを選択
+    ↓
+入力・ツール名を検証
+    ↓
+登録済みPython関数だけを実行
+    ↓
+定型フォーマットで結果を表示し、CSV／JSONへ保存
+```
 
-- Windows
+Ollamaは `http://localhost:11434/api/chat` で動く `qwen2.5:3b` を使用します。LLMの返答をそのままコードとして実行せず、`tool_registry.py` に登録済みの関数だけを呼び出します。記録を伴う依頼かどうかや返答JSONの型も検証し、ツール実行結果はLLMへ再送せず決定的な書式で表示します。
+
+## 技術構成
+
 - Python 3.13
-- Ollama
-- Ollamaモデル `qwen2.5:3b`
-- Ollama接続先 `http://localhost:11434/api/chat`
+- Ollama / `qwen2.5:3b`
+- Requests
+- CSV / JSONによるローカル保存
+- `unittest` / `unittest.mock`
+- GitHub Actions
 
-ほかのOS、Pythonバージョン、Ollamaモデルとの互換性は要確認です。
+## セットアップ
 
-## 環境構築
-
-### 1. PowerShellでリポジトリへ移動する
-
-個人固有のパスではなく、実際に配置したフォルダへ移動してください。
+Windows PowerShellでの例です。
 
 ```powershell
-cd C:\path\to\ai-learning
-```
-
-### 2. Pythonを確認する
-
-```powershell
-python --version
-```
-
-確認済みのバージョンはPython 3.13です。
-
-### 3. 仮想環境を作成する
-
-```powershell
+git clone <repository-url>
+cd ai-learning
 python -m venv .venv
-```
-
-### 4. 仮想環境を有効化する
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-### 5. 必要なPythonライブラリを導入する
-
-正式入口に必要な外部ライブラリは `requests` だけです。
-
-```powershell
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-```
-
-個別に導入する場合は次のコマンドです。
-
-```powershell
-python -m pip install requests
-```
-
-## Ollamaの準備
-
-### モデルを導入する
-
-```powershell
 ollama pull qwen2.5:3b
 ```
 
-### モデルを確認する
-
-```powershell
-ollama list
-```
-
-一覧に `qwen2.5:3b` が表示されることを確認してください。
-
-### Ollamaを起動する
-
-Ollamaが起動していない場合は、次のコマンドを使用します。
+Ollamaが常駐していない環境では、別のターミナルで起動します。
 
 ```powershell
 ollama serve
 ```
 
-すでにOllamaがサービスや別プロセスとして起動している場合は、追加で起動する必要はありません。
+## 使い方
 
-## 起動と終了
-
-正式な起動方法は次の1つだけです。
+正式なCLI入口は `chat_agent.py` です。
 
 ```powershell
 python -B chat_agent.py
 ```
 
-終了するには、入力待ちで次のように入力します。
+入力例：
 
 ```text
-終了
+あなた：今日はRAGを30分勉強した
+AI：RAGの学習時間30分を記録しました。
+
+あなた：トピック別の学習時間を教えて
+AI：RAG：30分
+
+あなた：RAGを120分勉強する目標にしたい
+AI：RAGの目標学習時間を120分に設定しました。
 ```
 
-## 基本操作例
+`終了` と入力するとCLIを終了します。表示文はデータやバージョンにより異なる場合があります。
 
-以下は架空の入力例です。
+## 保存データとプライバシー
 
-### 学習時間
+通常は次の実行データをリポジトリ直下に作成します。これらは個人ログのためGit管理しません。
 
-```text
-今日は25分勉強した
-これまでの合計学習時間を教えて
+| ファイル | 内容 | Gitでの扱い |
+|---|---|---|
+| `study_records.csv` | 学習時間 | 管理しない |
+| `study_topics.csv` | 学習トピック | 管理しない |
+| `study_goals.csv` | トピック別目標 | 管理しない |
+| `detailed_study_records.csv` | トピックと時間の詳細記録 | 管理しない |
+| `conversation_history.json` | CLIの会話履歴 | 管理しない |
+| `chat_history.json` | 旧スクリプトの会話履歴 | 管理しない |
+
+`.env`、会話履歴、個人の学習ログは `.gitignore` の対象です。秘密情報や実際の個人データをREADME、Issue、公開リポジトリへ掲載しないでください。
+
+一方、追跡済みの `study_data.csv` は初期学習用スクリプトで使う小さなサンプル／初期データとして残しています。個人ログの保存先には使用しません。
+
+環境変数 `AI_LEARNING_DATA_DIR` に既存フォルダの絶対パスを指定すると、実行データをリポジトリ外へ分離できます。
+
+```powershell
+New-Item -ItemType Directory -Force C:\path\to\ai-learning-data
+$env:AI_LEARNING_DATA_DIR = "C:\path\to\ai-learning-data"
+python -B chat_agent.py
 ```
 
-### 学習トピック
+未指定時はリポジトリ直下を使用します。空文字、相対パス、存在しないパス、ファイルのパスは安全のため拒否します。
 
-```text
-今日はベクトル検索を勉強した
-これまで何を勉強した？
+## テストと安全設計
+
+CIと同じ、外部サービス不要のテストは次のコマンドで実行できます。
+
+```powershell
+python -B -m unittest -v test_storage_isolation.py test_generate_final_answer_fallback.py test_response_formatter.py test_topic_list_routing.py
 ```
 
-### 詳細記録と集計
+このテスト群は以下を確認します。
 
-```text
-今日は機械学習を15分勉強した
-トピック別の学習時間を教えて
-今の学習状況を分析して
-```
+- 一時ディレクトリによる個人データとの分離
+- 保存先設定の検証
+- Ollama通信失敗時のフォールバック
+- 不正なJSONや型の拒否
+- 表示形式、ツール選択補正、意図しない書込みの防止
 
-### 学習目標
+GitHub Actionsでも同じ49件を実行し、Ollamaへの実通信は行いません。リポジトリには学習過程で作成した `*_test.py` や `*_preview.py` もありますが、一部はスクリプト形式で、外部通信や実データへの書込みを伴う可能性があります。そのため `unittest discover` ではなく、上記の検証済みファイルを明示しています。
 
-```text
-データ分析を90分勉強する目標にしたい
-データ分析の目標まであとどれくらい？
-```
+Ollamaとの実通信はローカルでのみ確認します。`ollama list` で `qwen2.5:3b` と起動状態を確認してからCLIを実行し、一般会話や記録入力を試してください。個人ログを守るには `AI_LEARNING_DATA_DIR` を検証用フォルダへ設定してください。
 
-### 複数依頼
+## 主要ファイル
 
-```text
-今日は20分勉強した。今の学習状況も分析して
-学習したトピックとこれまでの学習時間を教えて
-```
-
-## 保存データ
-
-通常時は、次の5ファイルをリポジトリ直下で使用します。
-
-| ファイル | 用途 |
+| ファイル | 役割 |
 |---|---|
-| `study_records.csv` | 学習時間 |
-| `study_topics.csv` | 学習したトピック |
-| `detailed_study_records.csv` | トピックと学習時間の詳細記録 |
-| `study_goals.csv` | トピック別の目標時間 |
-| `conversation_history.json` | CLIの会話履歴 |
+| `chat_agent.py` | 正式なCLI入口。会話、ツール実行、履歴保存を統括 |
+| `tool_selector.py` | Ollamaへの問い合わせ、自然言語からのツール選択、入力検証 |
+| `tool_registry.py` | LLMから呼出し可能なPython関数の許可リスト |
+| `study_tools.py` | 学習時間の記録、累計、時間換算 |
+| `study_topic_tools.py` | 学習トピックの記録と一覧取得 |
+| `study_goal_tools.py` | 目標設定と進捗計算 |
+| `detailed_study_tools.py` | 詳細記録、トピック別集計、分析用データ生成 |
+| `response_formatter.py` | ツール結果を安定した表示文へ変換 |
+| `storage_paths.py` | 保存先の解決と安全性検証 |
+| `memory_manager.py` | 会話履歴の保存、分割、要約 |
+| `weekly_study.py` | 固定データを扱う初期学習用の補助スクリプト |
+| `test_storage_isolation.py` | 保存先分離とデータ保護のテスト |
+| `test_generate_final_answer_fallback.py` | 通信失敗時のフォールバックテスト |
+| `test_response_formatter.py` | 応答形式と異常系のテスト |
+| `test_topic_list_routing.py` | ツール選択・補正ロジックのテスト |
 
-これらのファイルには個人の学習記録が含まれるため、内容をREADME、Issue、チャット、公開リポジトリなどへ貼り付けないでください。
+## 現在のスコープ
 
-## 保存先を分離する
-
-環境変数 `AI_LEARNING_DATA_DIR` を設定すると、5つの保存ファイルを別のフォルダへ切り替えられます。テストや検証を本番データから分離するために使用します。
-
-指定先には次の条件があります。
-
-- 絶対パスであること
-- すでに存在するフォルダであること
-- ファイルではないこと
-- 空文字ではないこと
-- ツールは保存先フォルダを自動作成しないこと
-
-空文字、相対パス、存在しないパス、ファイルを指定すると `StorageConfigurationError` になります。
-
-### PowerShellで設定する
-
-先に検証専用フォルダを用意し、その絶対パスを指定します。
-
-```powershell
-$env:AI_LEARNING_DATA_DIR = "C:\absolute\path\to\test-data"
-```
-
-書込み処理を実行する前に、保存先が検証専用フォルダを指していることを確認してください。
-
-### 設定を解除する
-
-```powershell
-Remove-Item Env:AI_LEARNING_DATA_DIR
-```
-
-検証後は環境変数を解除し、通常保存先へ戻してください。
-
-## 本番データを変更しない安全なテスト
-
-通常のWindows PowerShellから、正式に整備した次の4テストファイルだけを明示指定して実行します。
-
-- `test_storage_isolation.py`
-- `test_generate_final_answer_fallback.py`
-- `test_response_formatter.py`
-- `test_topic_list_routing.py`
-
-### 実行前のメタデータ確認
-
-本番ファイルの内容は開かず、存在状態、サイズ、更新日時だけを記録します。新規cloneなどで5ファイルがまだ存在しない場合も、`Exists=False`として記録します。
-
-```powershell
-$dataFiles = @(
-  ".\study_records.csv"
-  ".\study_topics.csv"
-  ".\detailed_study_records.csv"
-  ".\study_goals.csv"
-  ".\conversation_history.json"
-)
-
-function Get-DataFileMetadata {
-  foreach ($path in $dataFiles) {
-    $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
-
-    if ($null -eq $item) {
-      [pscustomobject]@{
-        Name = $path
-        Exists = $false
-        Length = $null
-        LastWriteTimeUtc = $null
-      }
-    }
-    else {
-      [pscustomobject]@{
-        Name = $path
-        Exists = $true
-        Length = $item.Length
-        LastWriteTimeUtc = $item.LastWriteTimeUtc
-      }
-    }
-  }
-}
-
-$before = @(Get-DataFileMetadata)
-$before
-```
-
-### テストを実行する
-
-```powershell
-python -B -m unittest -v `
-  test_storage_isolation.py `
-  test_generate_final_answer_fallback.py `
-  test_response_formatter.py `
-  test_topic_list_routing.py
-```
-
-### 実行後のメタデータ比較
-
-実行前と同じPowerShellセッションで、存在状態、サイズ、更新日時を比較します。
-
-```powershell
-$after = @(Get-DataFileMetadata)
-$after
-
-$changes = Compare-Object `
-  -ReferenceObject $before `
-  -DifferenceObject $after `
-  -Property Name, Exists, Length, LastWriteTimeUtc
-
-if ($changes) {
-  $changes
-  throw "本番5ファイルの存在、サイズ、更新日時に差があります。"
-}
-else {
-  Write-Host "本番5ファイルの前後状態は一致しています。"
-}
-```
-
-新規環境では未存在のファイルが前後とも`Exists=False`であること、既存環境では存在するファイルのサイズと更新日時が前後で一致することを確認できます。実行前の`$before`を保持するため、メタデータ取得、テスト、比較は同じPowerShellセッションで行ってください。
-
-CodexのWindowsサンドボックスでは、AppData配下の `TemporaryDirectory` への書込み権限により `PermissionError` が発生した実績があります。安全な分離テストは通常のWindows PowerShellで実行してください。
-
-### `unittest discover`を使用しない
-
-このリポジトリには学習用・確認用の `*_test.py` が多数あり、すべてが安全なunittestとは限りません。`unittest discover`は使用せず、上記4ファイルを明示指定してください。
-
-## 学習用・確認用スクリプトの注意
-
-- `weekly_study.py` は固定された曜日別データを扱う初期学習用の補助スクリプトです。正式入口ではありません。
-- 既存の `*_test.py` や `*_preview.py` は、安全なunittestとは限りません。
-- `api_*.py`、`ollama_test.py`などは外部通信を行う可能性があります。
-- 確認用スクリプトには、本番CSV・JSONを書き換える可能性があるものがあります。
-- `study_tools.py` を直接実行すると学習時間を書き込むため、直接実行しないでください。
-- 内容、通信先、保存先を確認していないスクリプトは実行しないでください。
-
-## CLI版MVPの対象外
-
-- GUI
-- 日付別・週別集計
-- 記録の編集・削除
-- 既存CSVの統合
-- `chat_loop.py`
-- `csv_reader.py`
-- `csv_writer.py`
-- `study_data.csv`
-- `chat_history.json`
-
-`weekly_study.py` はMVP機能ではなく、初期学習用の補助スクリプトです。
-
-## トラブルシューティング
-
-### Ollamaとの通信に失敗する
-
-Ollamaが起動しているか確認してください。停止中の場合は次を実行します。
-
-```powershell
-ollama serve
-```
-
-すでに起動済みの場合は、追加起動せず現在のプロセスを使用してください。
-
-### `qwen2.5:3b` が導入されていない
-
-モデル一覧を確認します。
-
-```powershell
-ollama list
-```
-
-モデルがない場合は導入します。
-
-```powershell
-ollama pull qwen2.5:3b
-```
-
-### 保存先設定エラーになる
-
-次を確認してください。
-
-- `AI_LEARNING_DATA_DIR` が空ではないか
-- 相対パスではなく絶対パスか
-- 指定したパスが存在するか
-- フォルダではなくファイルを指定していないか
-
-通常保存先へ戻す場合は設定を解除します。
-
-```powershell
-Remove-Item Env:AI_LEARNING_DATA_DIR
-```
-
-### Codex端末だけで日本語が文字化けする
-
-`weekly_study.py` の確認では、Codex端末だけで日本語が文字化けし、通常PowerShellでは正常に表示された実績があります。処理結果の数値を確認したうえで、通常PowerShellから表示を確認してください。原因は断定していません。
-
-## 機密情報の取り扱い
-
-次の情報をREADME、ソースコード、テスト、Issue、チャット、公開リポジトリへ記録しないでください。
-
-- APIキー、トークン、パスワード
-- `.env` の内容
-- 認証情報
-- 個人固有の絶対パス
-- 実際の学習時間、トピック、目標
-- 個人の会話履歴
-- 個人名やアカウント情報
-
-Ollamaはローカル接続ですが、入力内容や保存データには個人情報・機密情報を含めないでください。
+学習用のローカルCLIとして、記録・集計・目標管理とLLM連携に焦点を当てています。GUI、記録の編集／削除、クラウド同期、外部APIや有料サービスとの連携は対象外です。
